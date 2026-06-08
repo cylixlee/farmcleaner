@@ -26,10 +26,19 @@ public static class FarmCleanerPatches
             postfix: new HarmonyMethod(typeof(FarmCleanerPatches), nameof(AddItemToInventoryPostfix))
         );
 
+        var couldAcceptMethod =
+            AccessTools.Method(typeof(Farmer), "couldInventoryAcceptThisItem",
+                [typeof(Item)])
+            ?? AccessTools.Method(typeof(Farmer), "couldInventoryAcceptThisItem",
+                [typeof(Item), typeof(bool)]);
+
+        var couldAcceptPrefix = couldAcceptMethod.GetParameters().Length == 1
+            ? new HarmonyMethod(typeof(FarmCleanerPatches), nameof(CouldInventoryAcceptPrefix))
+            : new HarmonyMethod(typeof(FarmCleanerPatches), nameof(CouldInventoryAcceptPrefixAndroid));
+
         harmony.Patch(
-            original: AccessTools.Method(typeof(Farmer), "couldInventoryAcceptThisItem",
-                [typeof(Item)]),
-            prefix: new HarmonyMethod(typeof(FarmCleanerPatches), nameof(CouldInventoryAcceptPrefix))
+            original: couldAcceptMethod,
+            prefix: couldAcceptPrefix
         );
     }
 
@@ -56,7 +65,8 @@ public static class FarmCleanerPatches
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool CouldInventoryAcceptPrefix(Farmer __instance, Item item, ref bool __result)
+    public static bool CouldInventoryAcceptPrefix(
+        Farmer __instance, Item item, ref bool __result)
     {
         if (magnetBoostActive)
         {
@@ -64,5 +74,12 @@ public static class FarmCleanerPatches
             return false;
         }
         return true;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool CouldInventoryAcceptPrefixAndroid(
+        Farmer __instance, Item item, bool message_if_full, ref bool __result)
+    {
+        return CouldInventoryAcceptPrefix(__instance, item, ref __result);
     }
 }
