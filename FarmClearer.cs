@@ -1,3 +1,4 @@
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -9,23 +10,32 @@ namespace Cylix.FarmCleaner;
 
 internal class FarmClearer
 {
-    private readonly IModHelper _helper;
-    private readonly IMonitor _monitor;
-    private bool _magnetActive;
+    private readonly IModHelper modHelper;
+    private readonly IMonitor modMonitor;
+    private bool magnetActive;
+
+    public static bool MagnetBoostActive;
 
     public FarmClearer(IModHelper helper, IMonitor monitor)
     {
-        _helper = helper;
-        _monitor = monitor;
+        modHelper = helper;
+        modMonitor = monitor;
+    }
+
+    public static void ApplyHarmonyPatches(string uniqueId)
+    {
+        var harmony = new Harmony(uniqueId);
+
+        harmony.Patch(
+            original: AccessTools.Method(typeof(Farmer), "GetAppliedMagneticRadius"),
+            prefix: new HarmonyMethod(typeof(FarmClearer), nameof(MagneticRadiusPrefix))
+        );
     }
 
     public void ClearFarm(bool clearFruitTrees)
     {
-        if (_magnetActive)
-        {
-            _monitor.Log("Farm clearing already in progress.", LogLevel.Debug);
+        if (magnetActive)
             return;
-        }
 
         var farm = Game1.getFarm();
         if (farm is null)
@@ -38,15 +48,65 @@ internal class FarmClearer
         if (total == 0)
             return;
 
-        _monitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
+        modMonitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
 
-        StartMagnet();
+        var debrisWithItems = farm.debris.Count(d => d.item is not null);
+        modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
+
+        magnetActive = true;
+        MagnetBoostActive = true;
+        magnetTicks = 0;
+        modHelper.Events.GameLoop.UpdateTicked += OnMagnetTick;
+    }
+
+    private int magnetTicks;
+
+    private void OnMagnetTick(object? sender, UpdateTickedEventArgs e)
+    {
+        var farm = Game1.getFarm();
+        if (farm is null)
+        {
+            StopMagnet();
+            return;
+        }
+
+        magnetTicks++;
+
+        var hasItems = false;
+        foreach (var debris in farm.debris)
+        {
+            if (debris.item is not null)
+            {
+                hasItems = true;
+                break;
+            }
+        }
+
+        if (!hasItems || magnetTicks > 600)
+            StopMagnet();
+    }
+
+    private void StopMagnet()
+    {
+        modHelper.Events.GameLoop.UpdateTicked -= OnMagnetTick;
+        magnetTicks = 0;
+        magnetActive = false;
+        MagnetBoostActive = false;
     }
 
     private int ClearObjects(Farm farm)
     {
-        var pickaxe = new Pickaxe();
-        var axe = new Axe();
+        var player = Game1.player;
+        var pickaxe = new Pickaxe
+        {
+            lastUser = player,
+            UpgradeLevel = 4
+        };
+        var axe = new Axe
+        {
+            lastUser = player,
+            UpgradeLevel = 4
+        };
 
         var toRemove = new List<Vector2>();
 
@@ -59,11 +119,20 @@ internal class FarmClearer
             var type = obj.Type;
 
             if (IsStone(name, type))
+            {
+                modHelper.Reflection.GetField<int>(obj, "health").SetValue(1);
                 obj.performToolAction(pickaxe);
+            }
             else if (IsWeed(name, type))
+            {
+                modHelper.Reflection.GetField<int>(obj, "health").SetValue(1);
                 obj.performToolAction(axe);
+            }
             else if (IsTwig(name, type))
+            {
+                modHelper.Reflection.GetField<int>(obj, "health").SetValue(1);
                 obj.performToolAction(axe);
+            }
             else
                 continue;
 
@@ -76,9 +145,15 @@ internal class FarmClearer
         return toRemove.Count;
     }
 
-    private int ClearTerrainFeatures(Farm farm, bool clearFruitTrees)
+    private static int ClearTerrainFeatures(Farm farm, bool clearFruitTrees)
     {
-        var axe = new Axe();
+        var axe = new Axe
+        {
+            lastUser = Game1.player,
+            UpgradeLevel = 4
+        };
+
+        var scythe = ItemRegistry.Create<MeleeWeapon>("(W)47");
 
         var toRemove = new List<Vector2>();
 
@@ -90,17 +165,23 @@ internal class FarmClearer
             switch (feature)
             {
                 case Tree tree:
-                    tree.performToolAction(axe, explosion: 1, tile);
+                    tree.health.Value = 1;
+                    tree.stump.Value = false;
+                    tree.performToolAction(axe, explosion: 0, tile);
                     toRemove.Add(tile);
                     break;
 
                 case FruitTree fruitTree when clearFruitTrees:
-                    fruitTree.performToolAction(axe, explosion: 1, tile);
+                    fruitTree.health.Value = 1;
+                    fruitTree.stump.Value = false;
+                    fruitTree.performToolAction(axe, explosion: 0, tile);
                     toRemove.Add(tile);
                     break;
 
                 case Grass grass:
-                    grass.performToolAction(axe, explosion: 1, tile);
+                    int weeds = grass.numberOfWeeds.Value;
+                    for (int i = 0; i < weeds; i++)
+                        grass.performToolAction(scythe, explosion: 0, tile);
                     toRemove.Add(tile);
                     break;
             }
@@ -112,9 +193,13 @@ internal class FarmClearer
         return toRemove.Count;
     }
 
-    private int ClearResourceClumps(Farm farm)
+    private static int ClearResourceClumps(Farm farm)
     {
-        var pickaxe = new Pickaxe();
+        var pickaxe = new Pickaxe
+        {
+            lastUser = Game1.player,
+            UpgradeLevel = 4
+        };
         var count = 0;
 
         var clumps = farm.resourceClumps.ToList();
@@ -126,7 +211,8 @@ internal class FarmClearer
                 (int)(clump.Tile.Y)
             );
 
-            clump.performToolAction(pickaxe, damage: 999, tile);
+            clump.health.Value = 1;
+            clump.performToolAction(pickaxe, damage: 1, tile);
             count++;
         }
 
@@ -135,61 +221,14 @@ internal class FarmClearer
         return count;
     }
 
-    private void StartMagnet()
+    private static bool MagneticRadiusPrefix(Farmer __instance, ref int __result)
     {
-        if (_magnetActive)
-            return;
-
-        _magnetActive = true;
-        _helper.Events.GameLoop.UpdateTicked += OnMagnetTick;
-    }
-
-    private int _magnetTicks;
-
-    private void OnMagnetTick(object? sender, UpdateTickedEventArgs e)
-    {
-        var farm = Game1.getFarm();
-        if (farm is null)
+        if (MagnetBoostActive)
         {
-            StopMagnet();
-            return;
+            __result = 100000;
+            return false;
         }
-
-        _magnetTicks++;
-
-        var playerPos = Game1.player.Position;
-
-        foreach (var debris in farm.debris)
-        {
-            if (debris.item is null)
-                continue;
-
-            foreach (var chunk in debris.Chunks)
-            {
-                var pos = chunk.position.Value;
-                var dir = playerPos - pos;
-                var dist = dir.Length();
-
-                if (dist < 32f)
-                    continue;
-
-                dir.Normalize();
-
-                var speed = Math.Min(dist * 0.3f, 30f);
-                chunk.xVelocity.Value = dir.X * speed;
-                chunk.yVelocity.Value = dir.Y * speed;
-            }
-        }
-
-        if (_magnetTicks > 180 || farm.debris.Count == 0)
-            StopMagnet();
-    }
-
-    private void StopMagnet()
-    {
-        _helper.Events.GameLoop.UpdateTicked -= OnMagnetTick;
-        _magnetTicks = 0;
-        _magnetActive = false;
+        return true;
     }
 
     private static bool IsStone(string name, string type)

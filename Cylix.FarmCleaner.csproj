@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ModFolderName>FarmCleaner</ModFolderName>
+    <EnableHarmony>true</EnableHarmony>
   </PropertyGroup>
 
   <ItemGroup>

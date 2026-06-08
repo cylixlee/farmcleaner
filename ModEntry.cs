@@ -6,20 +6,22 @@ namespace Cylix.FarmCleaner;
 
 internal sealed class ModEntry : Mod
 {
-    private ModConfig _config = null!;
-    private FarmClearer _farmClearer = null!;
+    private ModConfig config = null!;
+    private FarmClearer farmClearer = null!;
 
     public override void Entry(IModHelper helper)
     {
-        _config = Helper.ReadConfig<ModConfig>();
-        _farmClearer = new FarmClearer(Helper, Monitor);
+        config = Helper.ReadConfig<ModConfig>();
+        farmClearer = new FarmClearer(Helper, Monitor);
+
+        FarmClearer.ApplyHarmonyPatches(ModManifest.UniqueID);
 
         helper.Events.Input.ButtonsChanged += OnButtonsChanged;
         helper.Events.GameLoop.GameLaunched += OnGameLaunched;
 
         helper.ConsoleCommands.Add("clearfarm",
             "Clears all trees, stones, grass, and debris from your farm.\n\nUsage: clearfarm",
-            (_, _) => _farmClearer.ClearFarm(_config.ClearFruitTrees));
+            (_, _) => farmClearer.ClearFarm(config.ClearFruitTrees));
     }
 
     private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
@@ -27,7 +29,7 @@ internal sealed class ModEntry : Mod
         if (!Context.IsWorldReady)
             return;
 
-        if (!_config.ClearKey.JustPressed())
+        if (!config.ClearKey.JustPressed())
             return;
 
         if (Game1.currentLocation is not Farm)
@@ -36,7 +38,7 @@ internal sealed class ModEntry : Mod
             return;
         }
 
-        _farmClearer.ClearFarm(_config.ClearFruitTrees);
+        farmClearer.ClearFarm(config.ClearFruitTrees);
     }
 
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -46,22 +48,26 @@ internal sealed class ModEntry : Mod
         if (gmcm is null)
             return;
 
-        gmcm.Register(ModManifest, () => _config = new ModConfig(), () => Helper.WriteConfig(_config));
-
-        gmcm.AddKeybind(
+        gmcm.Register(
             mod: ModManifest,
+            reset: () => config = new ModConfig(),
+            save: () => Helper.WriteConfig(config)
+        );
+
+        gmcm.AddKeybindList(
+            mod: ModManifest,
+            getValue: () => config.ClearKey,
+            setValue: val => config.ClearKey = val,
             name: () => "Clear Key",
-            tooltip: () => "Key to clear all trees, stones, grass, and debris from your farm.",
-            getValue: () => _config.ClearKey,
-            setValue: val => _config.ClearKey = val
+            tooltip: () => "Key to clear all trees, stones, grass, and debris from your farm."
         );
 
         gmcm.AddBoolOption(
             mod: ModManifest,
+            getValue: () => config.ClearFruitTrees,
+            setValue: val => config.ClearFruitTrees = val,
             name: () => "Clear Fruit Trees",
-            tooltip: () => "If enabled, fruit trees will also be cleared.",
-            getValue: () => _config.ClearFruitTrees,
-            setValue: val => _config.ClearFruitTrees = val
+            tooltip: () => "If enabled, fruit trees will also be cleared."
         );
     }
 }
