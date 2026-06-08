@@ -21,7 +21,7 @@ internal sealed class ModEntry : Mod
 
         helper.ConsoleCommands.Add("clearfarm",
             "Clears all trees, stones, grass, and debris from your farm.\n\nUsage: clearfarm",
-            (_, _) => farmClearer.ClearFarm(config.ClearFruitTrees));
+            (_, _) => farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier));
     }
 
     private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
@@ -38,7 +38,7 @@ internal sealed class ModEntry : Mod
             return;
         }
 
-        farmClearer.ClearFarm(config.ClearFruitTrees);
+        farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier);
     }
 
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -68,6 +68,17 @@ internal sealed class ModEntry : Mod
             setValue: val => config.ClearFruitTrees = val,
             name: () => "Clear Fruit Trees",
             tooltip: () => "If enabled, fruit trees will also be cleared."
+        );
+
+        gmcm.AddNumberOption(
+            mod: ModManifest,
+            getValue: () => config.DropMultiplier,
+            setValue: val => config.DropMultiplier = val,
+            name: () => "Drop Multiplier",
+            tooltip: () => "Multiplies the number of dropped items (wood, stone, fiber, etc).",
+            min: 0.5f,
+            max: 10f,
+            interval: 0.5f
         );
     }
 }

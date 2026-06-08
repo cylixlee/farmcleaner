@@ -6,4 +6,5 @@ public sealed class ModConfig
 {
     public KeybindList ClearKey { get; set; } = KeybindList.Parse("K");
     public bool ClearFruitTrees { get; set; } = false;
+    public float DropMultiplier { get; set; } = 1.0f;
 }

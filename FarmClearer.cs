@@ -32,7 +32,7 @@ internal class FarmClearer
         );
     }
 
-    public void ClearFarm(bool clearFruitTrees)
+    public void ClearFarm(bool clearFruitTrees, float dropMultiplier)
     {
         if (magnetActive)
             return;
@@ -49,6 +49,15 @@ internal class FarmClearer
             return;
 
         modMonitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
+
+        if (Math.Abs(dropMultiplier - 1.0f) > 0.01f)
+        {
+            foreach (var debris in farm.debris)
+            {
+                if (debris.item is not null)
+                    debris.item.Stack = (int)(debris.item.Stack * dropMultiplier);
+            }
+        }
 
         var debrisWithItems = farm.debris.Count(d => d.item is not null);
         modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
