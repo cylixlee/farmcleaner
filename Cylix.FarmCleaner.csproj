@@ -2,8 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>Latest</LangVersion>
+    <Version>1.0.0</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ModFolderName>FarmCleaner</ModFolderName>
   </PropertyGroup>
 
   <ItemGroup>
