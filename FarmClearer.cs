@@ -1,5 +1,6 @@
 using HarmonyLib;
 using Microsoft.Xna.Framework;
+using System.Runtime.CompilerServices;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -278,6 +279,7 @@ internal class FarmClearer
         return count;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static bool PlayerInRangePrefix(
         Debris __instance, Vector2 position, Farmer farmer, ref bool __result)
     {
@@ -288,6 +290,7 @@ internal class FarmClearer
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static bool MagneticRadiusPrefix(Farmer __instance, ref int __result)
     {
         if (MagnetBoostActive)
@@ -298,6 +301,7 @@ internal class FarmClearer
         return true;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void AddItemToInventoryPostfix(
         Farmer __instance, Item item, ref Item __result)
     {
@@ -308,6 +312,7 @@ internal class FarmClearer
         __result = null!;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static bool CouldInventoryAcceptPrefix(Farmer __instance, Item item, ref bool __result)
     {
         if (MagnetBoostActive)
