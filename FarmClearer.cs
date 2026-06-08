@@ -102,15 +102,28 @@ internal class FarmClearer
         magnetTicks++;
 
         skipIntercept = true;
+        var overflow = new List<Item>();
         for (int i = capturedItems.Count - 1; i >= 0; i--)
         {
             var leftover = Game1.player.addItemToInventory(capturedItems[i]);
             if (leftover is null)
                 capturedItems.RemoveAt(i);
             else
-                capturedItems[i] = leftover;
+            {
+                overflow.Add(leftover);
+                capturedItems.RemoveAt(i);
+            }
         }
         skipIntercept = false;
+
+        foreach (var item in overflow)
+        {
+            var offset = new Vector2(
+                (Random.Shared.NextSingle() - 0.5f) * 80f,
+                (Random.Shared.NextSingle() - 0.5f) * 80f - 64f);
+            var pos = Game1.player.Position + offset;
+            Game1.createItemDebris(item, pos, Game1.player.FacingDirection);
+        }
 
         var hasItems = capturedItems.Count > 0;
         if (!hasItems)
@@ -135,24 +148,6 @@ internal class FarmClearer
         magnetTicks = 0;
         magnetActive = false;
         MagnetBoostActive = false;
-
-        foreach (var item in capturedItems)
-        {
-            var offset = new Vector2(
-                (Random.Shared.NextSingle() - 0.5f) * 80f,
-                (Random.Shared.NextSingle() - 0.5f) * 80f - 64f);
-            var pos = Game1.player.Position + offset;
-
-            var debris = Game1.createItemDebris(item, pos, Game1.player.FacingDirection);
-            if (debris is not null)
-            {
-                foreach (var chunk in debris.Chunks)
-                {
-                    chunk.xVelocity.Value = (Random.Shared.NextSingle() - 0.5f) * 4f;
-                    chunk.yVelocity.Value = (Random.Shared.NextSingle() - 0.5f) * 4f;
-                }
-            }
-        }
         capturedItems.Clear();
     }
 
