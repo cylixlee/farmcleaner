@@ -14,7 +14,7 @@ internal sealed class ModEntry : Mod
         config = Helper.ReadConfig<ModConfig>();
         farmClearer = new FarmClearer(Helper, Monitor);
 
-        FarmClearer.ApplyHarmonyPatches(ModManifest.UniqueID);
+        FarmCleanerPatches.Apply(ModManifest.UniqueID, Monitor);
 
         helper.Events.Input.ButtonsChanged += OnButtonsChanged;
         helper.Events.GameLoop.GameLaunched += OnGameLaunched;

@@ -1,6 +1,4 @@
-using HarmonyLib;
 using Microsoft.Xna.Framework;
-using System.Runtime.CompilerServices;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -15,41 +13,10 @@ internal class FarmClearer
     private readonly IMonitor modMonitor;
     private bool magnetActive;
 
-    public static bool MagnetBoostActive;
-    private static readonly List<Item> capturedItems = [];
-    private static bool skipIntercept;
-
     public FarmClearer(IModHelper helper, IMonitor monitor)
     {
         modHelper = helper;
         modMonitor = monitor;
-    }
-
-    public static void ApplyHarmonyPatches(string uniqueId)
-    {
-        var harmony = new Harmony(uniqueId);
-
-        harmony.Patch(
-            original: AccessTools.Method(typeof(Debris), "playerInRange"),
-            prefix: new HarmonyMethod(typeof(FarmClearer), nameof(PlayerInRangePrefix))
-        );
-
-        harmony.Patch(
-            original: AccessTools.Method(typeof(Farmer), "GetAppliedMagneticRadius"),
-            prefix: new HarmonyMethod(typeof(FarmClearer), nameof(MagneticRadiusPrefix))
-        );
-
-        harmony.Patch(
-            original: AccessTools.Method(typeof(Farmer), "addItemToInventory",
-                [typeof(Item)]),
-            postfix: new HarmonyMethod(typeof(FarmClearer), nameof(AddItemToInventoryPostfix))
-        );
-
-        harmony.Patch(
-            original: AccessTools.Method(typeof(Farmer), "couldInventoryAcceptThisItem",
-                [typeof(Item)]),
-            prefix: new HarmonyMethod(typeof(FarmClearer), nameof(CouldInventoryAcceptPrefix))
-        );
     }
 
     public void ClearFarm(bool clearFruitTrees, float dropMultiplier)
@@ -83,8 +50,8 @@ internal class FarmClearer
         modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
 
         magnetActive = true;
-        MagnetBoostActive = true;
-        capturedItems.Clear();
+        FarmCleanerPatches.magnetBoostActive = true;
+        FarmCleanerPatches.capturedItems.Clear();
         magnetTicks = 0;
         modHelper.Events.GameLoop.UpdateTicked += OnMagnetTick;
     }
@@ -102,20 +69,20 @@ internal class FarmClearer
 
         magnetTicks++;
 
-        skipIntercept = true;
+        FarmCleanerPatches.skipIntercept = true;
         var overflow = new List<Item>();
-        for (int i = capturedItems.Count - 1; i >= 0; i--)
+        for (int i = FarmCleanerPatches.capturedItems.Count - 1; i >= 0; i--)
         {
-            var leftover = Game1.player.addItemToInventory(capturedItems[i]);
+            var leftover = Game1.player.addItemToInventory(FarmCleanerPatches.capturedItems[i]);
             if (leftover is null)
-                capturedItems.RemoveAt(i);
+                FarmCleanerPatches.capturedItems.RemoveAt(i);
             else
             {
                 overflow.Add(leftover);
-                capturedItems.RemoveAt(i);
+                FarmCleanerPatches.capturedItems.RemoveAt(i);
             }
         }
-        skipIntercept = false;
+        FarmCleanerPatches.skipIntercept = false;
 
         foreach (var item in overflow)
         {
@@ -126,7 +93,7 @@ internal class FarmClearer
             Game1.createItemDebris(item, pos, Game1.player.FacingDirection);
         }
 
-        var hasItems = capturedItems.Count > 0;
+        var hasItems = FarmCleanerPatches.capturedItems.Count > 0;
         if (!hasItems)
         {
             foreach (var debris in farm.debris)
@@ -148,8 +115,8 @@ internal class FarmClearer
         modHelper.Events.GameLoop.UpdateTicked -= OnMagnetTick;
         magnetTicks = 0;
         magnetActive = false;
-        MagnetBoostActive = false;
-        capturedItems.Clear();
+        FarmCleanerPatches.magnetBoostActive = false;
+        FarmCleanerPatches.capturedItems.Clear();
     }
 
     private int ClearObjects(Farm farm)
@@ -277,50 +244,6 @@ internal class FarmClearer
         farm.resourceClumps.Clear();
 
         return count;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool PlayerInRangePrefix(
-        Debris __instance, Vector2 position, Farmer farmer, ref bool __result)
-    {
-        if (!MagnetBoostActive)
-            return true;
-
-        __result = true;
-        return false;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool MagneticRadiusPrefix(Farmer __instance, ref int __result)
-    {
-        if (MagnetBoostActive)
-        {
-            __result = 500;
-            return false;
-        }
-        return true;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void AddItemToInventoryPostfix(
-        Farmer __instance, Item item, ref Item __result)
-    {
-        if (!MagnetBoostActive || skipIntercept || __result is null)
-            return;
-
-        capturedItems.Add(__result);
-        __result = null!;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool CouldInventoryAcceptPrefix(Farmer __instance, Item item, ref bool __result)
-    {
-        if (MagnetBoostActive)
-        {
-            __result = true;
-            return false;
-        }
-        return true;
     }
 
     private static bool IsStone(string name, string type)
