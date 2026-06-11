@@ -10,6 +10,7 @@ public static class FarmCleanerPatches
     internal static bool magnetBoostActive;
     internal static readonly List<Item> capturedItems = [];
     internal static bool skipIntercept;
+    internal static bool blockExperience;
 
     public static void Apply(string uniqueId, IMonitor monitor)
     {
@@ -24,6 +25,12 @@ public static class FarmCleanerPatches
             original: AccessTools.Method(typeof(Farmer), "addItemToInventory",
                 [typeof(Item)]),
             postfix: new HarmonyMethod(typeof(FarmCleanerPatches), nameof(AddItemToInventoryPostfix))
+        );
+
+        harmony.Patch(
+            original: AccessTools.Method(typeof(Farmer), "gainExperience",
+                [typeof(int), typeof(int)]),
+            prefix: new HarmonyMethod(typeof(FarmCleanerPatches), nameof(GainExperiencePrefix))
         );
 
         var couldAcceptMethod =
@@ -54,8 +61,7 @@ public static class FarmCleanerPatches
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void AddItemToInventoryPostfix(
-        Farmer __instance, Item item, ref Item __result)
+    public static void AddItemToInventoryPostfix(Farmer __instance, Item item, ref Item __result)
     {
         if (!magnetBoostActive || skipIntercept || __result is null)
             return;
@@ -65,8 +71,7 @@ public static class FarmCleanerPatches
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool CouldInventoryAcceptPrefix(
-        Farmer __instance, Item item, ref bool __result)
+    public static bool CouldInventoryAcceptPrefix(Farmer __instance, Item item, ref bool __result)
     {
         if (magnetBoostActive)
         {
@@ -77,9 +82,16 @@ public static class FarmCleanerPatches
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static bool CouldInventoryAcceptPrefixAndroid(
-        Farmer __instance, Item item, bool message_if_full, ref bool __result)
+    public static bool CouldInventoryAcceptPrefixAndroid(Farmer __instance, Item item, bool message_if_full, ref bool __result)
     {
         return CouldInventoryAcceptPrefix(__instance, item, ref __result);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool GainExperiencePrefix()
+    {
+        if (blockExperience)
+            return false;
+        return true;
     }
 }

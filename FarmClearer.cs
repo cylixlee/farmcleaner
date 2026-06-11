@@ -19,7 +19,7 @@ internal class FarmClearer
         modMonitor = monitor;
     }
 
-    public void ClearFarm(bool clearFruitTrees, float dropMultiplier)
+    public void ClearFarm(bool clearFruitTrees, float dropMultiplier, bool enableExperience, bool clearTappedTrees, bool clearGrowingTrees)
     {
         if (magnetActive)
             return;
@@ -28,32 +28,40 @@ internal class FarmClearer
         if (farm is null)
             return;
 
-        var total = ClearObjects(farm)
-                  + ClearTerrainFeatures(farm, clearFruitTrees)
-                  + ClearResourceClumps(farm);
-
-        if (total == 0)
-            return;
-
-        modMonitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
-
-        if (Math.Abs(dropMultiplier - 1.0f) > 0.01f)
+        FarmCleanerPatches.blockExperience = !enableExperience;
+        try
         {
-            foreach (var debris in farm.debris)
+            var total = ClearObjects(farm)
+                      + ClearTerrainFeatures(farm, clearFruitTrees, clearTappedTrees, clearGrowingTrees)
+                      + ClearResourceClumps(farm);
+
+            if (total == 0)
+                return;
+
+            modMonitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
+
+            if (Math.Abs(dropMultiplier - 1.0f) > 0.01f)
             {
-                if (debris.item is not null)
-                    debris.item.Stack = (int)(debris.item.Stack * dropMultiplier);
+                foreach (var debris in farm.debris)
+                {
+                    if (debris.item is not null)
+                        debris.item.Stack = (int)(debris.item.Stack * dropMultiplier);
+                }
             }
+
+            var debrisWithItems = farm.debris.Count(d => d.item is not null);
+            modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
+
+            magnetActive = true;
+            FarmCleanerPatches.magnetBoostActive = true;
+            FarmCleanerPatches.capturedItems.Clear();
+            magnetTicks = 0;
+            modHelper.Events.GameLoop.UpdateTicked += OnMagnetTick;
         }
-
-        var debrisWithItems = farm.debris.Count(d => d.item is not null);
-        modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
-
-        magnetActive = true;
-        FarmCleanerPatches.magnetBoostActive = true;
-        FarmCleanerPatches.capturedItems.Clear();
-        magnetTicks = 0;
-        modHelper.Events.GameLoop.UpdateTicked += OnMagnetTick;
+        finally
+        {
+            FarmCleanerPatches.blockExperience = false;
+        }
     }
 
     private int magnetTicks;
@@ -170,7 +178,7 @@ internal class FarmClearer
         return toRemove.Count;
     }
 
-    private static int ClearTerrainFeatures(Farm farm, bool clearFruitTrees)
+    private static int ClearTerrainFeatures(Farm farm, bool clearFruitTrees, bool clearTappedTrees, bool clearGrowingTrees)
     {
         var axe = new Axe
         {
@@ -190,6 +198,10 @@ internal class FarmClearer
             switch (feature)
             {
                 case Tree tree:
+                    if (!clearTappedTrees && HasTapper(farm, tile))
+                        break;
+                    if (!clearGrowingTrees && tree.growthStage.Value < 5)
+                        break;
                     tree.health.Value = 1;
                     tree.stump.Value = false;
                     tree.performToolAction(axe, explosion: 0, tile);
@@ -264,5 +276,12 @@ internal class FarmClearer
         return type == "Twig"
             || name.Contains("Twig", StringComparison.OrdinalIgnoreCase)
             || name.Contains("Branch", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool HasTapper(Farm farm, Vector2 tile)
+    {
+        if (!farm.Objects.TryGetValue(tile, out var obj) || obj is null)
+            return false;
+        return obj.QualifiedItemId is "(BC)105" or "(BC)264";
     }
 }

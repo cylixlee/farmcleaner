@@ -21,7 +21,7 @@ internal sealed class ModEntry : Mod
 
         helper.ConsoleCommands.Add("clearfarm",
             "Clears all trees, stones, grass, and debris from your farm.\n\nUsage: clearfarm",
-            (_, _) => farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier));
+            (_, _) => farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier, config.EnableExperience, config.ClearTappedTrees, config.ClearGrowingTrees));
     }
 
     private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
@@ -38,7 +38,7 @@ internal sealed class ModEntry : Mod
             return;
         }
 
-        farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier);
+        farmClearer.ClearFarm(config.ClearFruitTrees, config.DropMultiplier, config.EnableExperience, config.ClearTappedTrees, config.ClearGrowingTrees);
     }
 
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -68,6 +68,30 @@ internal sealed class ModEntry : Mod
             setValue: val => config.ClearFruitTrees = val,
             name: () => "Clear Fruit Trees",
             tooltip: () => "If enabled, fruit trees will also be cleared."
+        );
+
+        gmcm.AddBoolOption(
+            mod: ModManifest,
+            getValue: () => config.EnableExperience,
+            setValue: val => config.EnableExperience = val,
+            name: () => "Enable Experience",
+            tooltip: () => "If disabled, no experience is gained from clearing the farm."
+        );
+
+        gmcm.AddBoolOption(
+            mod: ModManifest,
+            getValue: () => config.ClearTappedTrees,
+            setValue: val => config.ClearTappedTrees = val,
+            name: () => "Clear Tapped Trees",
+            tooltip: () => "If enabled, trees with tappers will also be cleared."
+        );
+
+        gmcm.AddBoolOption(
+            mod: ModManifest,
+            getValue: () => config.ClearGrowingTrees,
+            setValue: val => config.ClearGrowingTrees = val,
+            name: () => "Clear Growing Trees",
+            tooltip: () => "If enabled, trees that are not fully grown will also be cleared."
         );
 
         gmcm.AddNumberOption(
