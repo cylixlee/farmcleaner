@@ -28,7 +28,7 @@ Whether to clear fruit trees. Defaults to disabled — fruit trees will not be c
 
 ### Drop Multiplier
 
-A multiplier applied to the number of dropped items (wood, stone, fiber, etc). Defaults to $1$. Range: $0.5$–$10.0$.
+A multiplier applied to the number of dropped items (wood, stone, fiber, etc). Defaults to $1$. Range: $0.5$ – $10.0$.
 
 This is extremely useful when you don't want to collect the basic resources repeatedly, and it's not that balance-breaking in my opinion.
 
