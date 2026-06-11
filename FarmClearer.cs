@@ -40,17 +40,35 @@ internal class FarmClearer
 
             modMonitor.Log($"Cleared {total} items from the farm.", LogLevel.Debug);
 
-            if (Math.Abs(dropMultiplier - 1.0f) > 0.01f)
+            foreach (var debris in farm.debris)
             {
-                foreach (var debris in farm.debris)
+                if (debris.debrisType.Value == Debris.DebrisType.OBJECT
+                    && debris.item is null
+                    && !string.IsNullOrEmpty(debris.itemId.Value))
                 {
-                    if (debris.item is not null)
-                        debris.item.Stack = (int)(debris.item.Stack * dropMultiplier);
+                    var resolved = ItemRegistry.Create(debris.itemId.Value);
+                    if (resolved is not null)
+                        debris.item = resolved;
                 }
+
+                if (debris.item is not null && Math.Abs(dropMultiplier - 1.0f) > 0.01f)
+                    debris.item.Stack = (int)(debris.item.Stack * dropMultiplier);
+
+                if (debris.item is not null && debris.debrisType.Value == Debris.DebrisType.OBJECT)
+                    debris.chunksMoveTowardPlayer = true;
             }
 
             var debrisWithItems = farm.debris.Count(d => d.item is not null);
             modMonitor.Log($"Debris count: {farm.debris.Count}, with items: {debrisWithItems}", LogLevel.Debug);
+
+            var debrisTypes = farm.debris.GroupBy(d => d.debrisType.Value)
+                .Select(g => $"{g.Key}={g.Count()}");
+            modMonitor.Log($"Debris by type: {string.Join(", ", debrisTypes)}", LogLevel.Debug);
+            foreach (var d in farm.debris)
+            {
+                var itemName = d.item?.Name ?? "null";
+                modMonitor.Log($"  type={d.debrisType.Value}, item={itemName}, chunks={d.Chunks.Count}", LogLevel.Debug);
+            }
 
             magnetActive = true;
             FarmCleanerPatches.magnetBoostActive = true;
@@ -76,6 +94,9 @@ internal class FarmClearer
         }
 
         magnetTicks++;
+
+        if (magnetTicks % 60 == 0)
+            modMonitor.Log($"Magnet tick {magnetTicks}, captured={FarmCleanerPatches.capturedItems.Count}", LogLevel.Debug);
 
         FarmCleanerPatches.skipIntercept = true;
         var overflow = new List<Item>();
@@ -106,7 +127,7 @@ internal class FarmClearer
         {
             foreach (var debris in farm.debris)
             {
-                if (debris.item is not null)
+                if (debris.item is not null || !string.IsNullOrEmpty(debris.itemId.Value))
                 {
                     hasItems = true;
                     break;
@@ -120,6 +141,15 @@ internal class FarmClearer
 
     private void StopMagnet()
     {
+        var farm = Game1.getFarm();
+        if (farm is not null)
+        {
+            var remaining = farm.debris.Count;
+            var remainingTypes = farm.debris.GroupBy(d => d.debrisType.Value)
+                .Select(g => $"{g.Key}={g.Count()}");
+            modMonitor.Log($"StopMagnet: remaining debris={remaining}, types=[{string.Join(", ", remainingTypes)}]", LogLevel.Debug);
+        }
+
         modHelper.Events.GameLoop.UpdateTicked -= OnMagnetTick;
         magnetTicks = 0;
         magnetActive = false;
