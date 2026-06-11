@@ -119,23 +119,34 @@ internal class FarmClearer
                 (Random.Shared.NextSingle() - 0.5f) * 80f,
                 (Random.Shared.NextSingle() - 0.5f) * 80f - 64f);
             var pos = Game1.player.Position + offset;
-            Game1.createItemDebris(item, pos, Game1.player.FacingDirection);
+            var newDebris = Game1.createItemDebris(item, pos, Game1.player.FacingDirection);
+            newDebris.Chunks[0].hasPassedRestingLineOnce.Value = true;
         }
 
-        var hasItems = FarmCleanerPatches.capturedItems.Count > 0;
-        if (!hasItems)
+        var playerPos = Game1.player.Position;
+        var shouldStop = FarmCleanerPatches.capturedItems.Count == 0;
+        if (shouldStop)
         {
             foreach (var debris in farm.debris)
             {
                 if (debris.item is not null || !string.IsNullOrEmpty(debris.itemId.Value))
                 {
-                    hasItems = true;
-                    break;
+                    var chunk = debris.Chunks[0];
+                    if (!chunk.hasPassedRestingLineOnce.Value)
+                    {
+                        shouldStop = false;
+                        break;
+                    }
+                    if (Vector2.Distance(playerPos, chunk.position.Value) > 384f)
+                    {
+                        shouldStop = false;
+                        break;
+                    }
                 }
             }
         }
 
-        if (!hasItems || magnetTicks > 240)
+        if (shouldStop)
             StopMagnet();
     }
 
