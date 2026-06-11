@@ -1,7 +1,7 @@
 {
   "Name": "Farm Cleaner",
   "Author": "cylix",
-  "Version": "1.0.0",
+  "Version": "1.1.0",
   "Description": "Press a key to instantly clear all trees, stones, and grass from your farm. Items are magnetically attracted to you.",
   "UniqueID": "Cylix.FarmCleaner",
   "EntryDll": "Cylix.FarmCleaner.dll",
