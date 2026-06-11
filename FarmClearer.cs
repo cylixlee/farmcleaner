@@ -278,6 +278,11 @@ internal class FarmClearer
             lastUser = Game1.player,
             UpgradeLevel = 4
         };
+        var axe = new Axe
+        {
+            lastUser = Game1.player,
+            UpgradeLevel = 4
+        };
         var count = 0;
 
         var clumps = farm.resourceClumps.ToList();
@@ -289,8 +294,12 @@ internal class FarmClearer
                 (int)(clump.Tile.Y)
             );
 
+            var tool = clump.parentSheetIndex.Value is 600 or 602
+                ? (Tool)axe
+                : pickaxe;
+
             clump.health.Value = 1;
-            clump.performToolAction(pickaxe, damage: 1, tile);
+            clump.performToolAction(tool, damage: 1, tile);
             count++;
         }
 
