@@ -135,7 +135,7 @@ internal class FarmClearer
             }
         }
 
-        if (!hasItems || magnetTicks > 600)
+        if (!hasItems || magnetTicks > 240)
             StopMagnet();
     }
 
