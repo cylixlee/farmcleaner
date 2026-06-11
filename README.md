@@ -10,7 +10,7 @@ Stardew Valley mod for cleaning the farm without hours of manual effort.
 
 ![cleaner](./img/cleaner.jpg)
 
-Just press the hot key (*default*: `K`) and wait for the debris to be collected. You can change it in [GMCM (Generic Mod Config Menu)](https://www.nexusmods.com/stardewvalley/mods/5098).
+Just press the hot key (*default*: `K`) and wait for the debris to be collected. You can change it in [GMCM (Generic Mod Config Menu)](https://www.nexusmods.com/stardewvalley/mods/5098). For Android players, you'll need [VirtualKeyboard](https://www.nexusmods.com/stardewvalley/mods/29884) mod.
 
 ## Settings
 
