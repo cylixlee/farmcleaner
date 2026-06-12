@@ -73,6 +73,7 @@ internal class FarmClearer
             magnetActive = true;
             FarmCleanerPatches.magnetBoostActive = true;
             FarmCleanerPatches.capturedItems.Clear();
+            FarmCleanerPatches.overflowedItems.Clear();
             magnetTicks = 0;
             modHelper.Events.GameLoop.UpdateTicked += OnMagnetTick;
         }
@@ -115,6 +116,7 @@ internal class FarmClearer
 
         foreach (var item in overflow)
         {
+            FarmCleanerPatches.overflowedItems.Add(item);
             var offset = new Vector2(
                 (Random.Shared.NextSingle() - 0.5f) * 80f,
                 (Random.Shared.NextSingle() - 0.5f) * 80f - 64f);
@@ -166,6 +168,7 @@ internal class FarmClearer
         magnetActive = false;
         FarmCleanerPatches.magnetBoostActive = false;
         FarmCleanerPatches.capturedItems.Clear();
+        FarmCleanerPatches.overflowedItems.Clear();
     }
 
     private int ClearObjects(Farm farm)

@@ -9,6 +9,7 @@ public static class FarmCleanerPatches
 {
     internal static bool magnetBoostActive;
     internal static readonly List<Item> capturedItems = [];
+    internal static readonly HashSet<Item> overflowedItems = [];
     internal static bool skipIntercept;
     internal static bool blockExperience;
 
@@ -64,6 +65,9 @@ public static class FarmCleanerPatches
     public static void AddItemToInventoryPostfix(Farmer __instance, Item item, ref Item __result)
     {
         if (!magnetBoostActive || skipIntercept || __result is null)
+            return;
+
+        if (overflowedItems.Contains(item))
             return;
 
         capturedItems.Add(__result);
